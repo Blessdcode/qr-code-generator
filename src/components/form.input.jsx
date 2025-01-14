@@ -1,12 +1,18 @@
 import { useState } from "react";
+import { saveAs } from "file-saver";
 
 const FormInput = () => {
   const [input, setInput] = useState("");
   const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
+
+    setLoading(true);
+    setError(null);
 
     try {
       const response = await fetch(
@@ -17,38 +23,68 @@ const FormInput = () => {
       if (response.ok) {
         setQrCodeUrl(response.url);
       } else {
-        console.error("Failed to generate QR code");
+        setError("Failed to generate QR code. Please try again.");
       }
-    } catch (error) {
-      console.error("Error fetching QR code:", error);
+    } catch (err) {
+      setError("An error occurred while fetching the QR code.");
+      console.error("Error fetching QR code:", err);
+    } finally {
+      setLoading(false);
+      setInput("");
     }
+  };
 
-    setInput("");
+  const downloadQrCode = () => {
+    if (qrCodeUrl) {
+      saveAs(qrCodeUrl, "QRCode.jpg");
+    }
   };
 
   return (
-    <div className="flex items-center gap-6 flex-wrap">
+    <div className="flex flex-col items-center gap-6 p-4 md:flex-row md:justify-center">
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col gap-4 my-8 w-full md:w-[380px]">
-        <h1 className=" font-bold text-start flex items-start">Get Qr Code</h1>
+        className="flex flex-col gap-4 w-full max-w-lg">
+        <h1 className="text-xl font-bold">Generate a QR Code</h1>
 
+        <label htmlFor="qr-input" className="sr-only">
+          Enter a link:
+        </label>
         <input
+          id="qr-input"
           type="text"
           placeholder="Enter a link here..."
-          className="p-2 border border-white outline-none text-white bg-transparent rounded-lg"
+          className="p-2 border border-gray-300 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />
+
         <button
           type="submit"
-          className="w-full py-2 px-4 bg-primary text-white font-semibold rounded-md hover:bg-primary-dark transition">
-          Submit
+          disabled={loading}
+          className={`w-full py-2 px-4 rounded-md text-white font-semibold transition ${
+            loading
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-primary hover:bg-primary-dark"
+          }`}>
+          {loading ? "Generating..." : "Submit"}
         </button>
+
+        {error && <p className="text-red-500 text-sm">{error}</p>}
       </form>
+
       {qrCodeUrl && (
-        <div className="mt-4 flex-1 md:w-[280px]  border-white border p-3 rounded-2xl">
-          <img src={qrCodeUrl} alt="Generated QR Code" className="w-full" />
+        <div className="mt-4 md:mt-0 p-4 border rounded-xl bg-white md:w-[350px]">
+          <img
+            src={qrCodeUrl}
+            alt="Generated QR Code"
+            className="w-full rounded-lg"
+          />
+          <button
+            className="w-full mt-3 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition"
+            onClick={downloadQrCode}>
+            Download QR Code
+          </button>
         </div>
       )}
     </div>
